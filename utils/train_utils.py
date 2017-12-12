@@ -4,7 +4,7 @@ import json
 import os
 import cv2
 import itertools
-from scipy.misc import imread, imresize
+from scipy.misc import imread, imresize, toimage
 import tensorflow as tf
 
 from data_utils import (annotation_jitter, annotation_to_h5)
@@ -50,6 +50,7 @@ def load_idl_tf(idlfile, H, jitter):
         random.shuffle(annos)
         for anno in annos:
             try:
+                """
                 if 'grayscale' in H and 'grayscale_prob' in H:
                     I = imread(anno.imageName, mode = 'RGB' if random.random() < H['grayscale_prob'] else 'L')
                     if len(I.shape) < 3:
@@ -58,6 +59,10 @@ def load_idl_tf(idlfile, H, jitter):
                     if len(I.shape) < 3:
                         continue
                     I = imread(anno.imageName, mode = 'RGB')
+                """
+                I = imread(anno.imageName, mode = 'L')
+                I = np.expand_dims(I, axis=2)
+                I = I.astype('float32')
                 if I.shape[0] != H["image_height"] or I.shape[1] != H["image_width"]:
                     if epoch == 0:
                         anno = rescale_boxes(I.shape, anno, H["image_height"], H["image_width"])
@@ -110,7 +115,9 @@ def load_data_gen(H, phase, jitter):
         yield output
 
 def add_rectangles(H, orig_image, confidences, boxes, use_stitching=False, rnn_len=1, min_conf=0.1, show_removed=True, tau=0.25, show_suppressed=True):
-    image = np.copy(orig_image[0])
+    image = np.squeeze(np.copy(orig_image[0]), axis=2)
+    image = toimage(image).convert('RGB')
+    image = np.asarray(image, dtype=np.float32)
     num_cells = H["grid_height"] * H["grid_width"]
     boxes_r = np.reshape(boxes, (-1,
                                  H["grid_height"],

@@ -10,6 +10,7 @@ import argparse
 import os
 import threading
 from scipy import misc
+from scipy.misc import toimage
 import tensorflow as tf
 import numpy as np
 from distutils.version import LooseVersion
@@ -127,12 +128,12 @@ def build_forward(H, x, phase, reuse):
 
     grid_size = H['grid_width'] * H['grid_height']
     outer_size = grid_size * H['batch_size']
-    input_mean = 117.
-    x -= input_mean
-    cnn, early_feat = googlenet_load.model(x, H, reuse)
-    early_feat_channels = H['early_feat_channels']
-    early_feat = early_feat[:, :, :, :early_feat_channels]
-
+    #input_mean = 117.
+    #x -= input_mean
+    #cnn, early_feat = googlenet_load.model(x, H, reuse)
+    #early_feat_channels = H['early_feat_channels']
+    #early_feat = early_feat[:, :, :, :early_feat_channels]
+    cnn = googlenet_load.model(x, H, reuse)
     if H['deconv']:
         size = 3
         stride = 2
@@ -155,7 +156,7 @@ def build_forward(H, x, phase, reuse):
         cnn2 = cnn[:, :, :, 700:]
         cnn2 = tf.nn.avg_pool(cnn2, ksize=[1, pool_size, pool_size, 1],
                               strides=[1, 1, 1, 1], padding='SAME')
-        cnn = tf_concat(3, [cnn1, cnn2])  
+        cnn = tf_concat(3, [cnn1, cnn2])
     cnn = tf.reshape(cnn,
                      [H['batch_size'] * H['grid_width'] * H['grid_height'], H['later_feat_channels']])
     initializer = tf.random_uniform_initializer(-0.1, 0.1)
@@ -434,7 +435,7 @@ def train(H, test_images):
         dtypes = [tf.float32, tf.float32, tf.float32]
         grid_size = H['grid_width'] * H['grid_height']
         shapes = (
-            [H['image_height'], H['image_width'], 3],
+            [H['image_height'], H['image_width'], 1],
             [grid_size, H['rnn_len'], H['num_classes']],
             [grid_size, H['rnn_len'], 4],
             )
@@ -479,6 +480,10 @@ def train(H, test_images):
             saver.restore(sess, weights_str)
         elif H['slim_basename'] == 'MobilenetV1':
             saver.restore(sess, H['slim_ckpt'])
+        
+        elif H['slim_basename'] == 'Andreanet':
+            saver = tf.train.import_meta_graph('/mnt/home/speimeng/dev/residual_classifier_2classes.ckpt.meta')
+            saver.restore(sess, '/mnt/home/speimeng/dev/residual_classifier_2classes.ckpt')
         else :
             gvars = [x for x in tf.global_variables() if x.name.startswith(H['slim_basename']) and H['solver']['opt'] not in x.name]
             gvars = [x for x in gvars if not x.name.startswith("{}/AuxLogits".format(H['slim_basename']))]
