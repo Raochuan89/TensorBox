@@ -24,27 +24,26 @@ def get_results(args, H):
     H["grid_height"] = H["image_height"] / H["region_size"]
     x_in = tf.placeholder(tf.float32, name='x_in', shape=[H['image_height'], H['image_width'], 3])
     if H['use_rezoom']:
-        pred_boxes, pred_logits, pred_confidences, pred_confs_deltas, pred_boxes_deltas = build_forward(H, tf.expand_dims(x_in, 0), 'test', reuse=None)
+        pred_boxes, pred_logits, pred_confidences, pred_confs_deltas, pred_boxes_deltas, lstm_min, lstm_max = build_forward(H, tf.expand_dims(x_in, 0), 'test', reuse=None)
         grid_area = H['grid_height'] * H['grid_width']
         pred_confidences = tf.reshape(tf.nn.softmax(tf.reshape(pred_confs_deltas, [grid_area * H['rnn_len'], 2])), [grid_area, H['rnn_len'], 2])
         if H['reregress']:
             pred_boxes = pred_boxes + pred_boxes_deltas
     else:
-        pred_boxes, pred_logits, pred_confidences = build_forward(H, tf.expand_dims(x_in, 0), 'test', reuse=None)
+        pred_boxes, pred_logits, pred_confidences, lstm_min, lstm_max = build_forward(H, tf.expand_dims(x_in, 0), 'test', reuse=None)
     saver = tf.train.Saver()
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
         saver.restore(sess, args.weights)
 
         pred_annolist = al.AnnoList()
-
         true_annolist = al.parse(args.test_boxes)
         data_dir = os.path.dirname(args.test_boxes)
         image_dir = get_image_dir(args)
         subprocess.call('mkdir -p %s' % image_dir, shell=True)
         for i in range(len(true_annolist)):
             true_anno = true_annolist[i]
-            orig_img = imread('%s/%s' % (data_dir, true_anno.imageName))[:,:,:3]
+            orig_img = imread('%s' % (true_anno.imageName))[:,:,:3]
             img = imresize(orig_img, (H["image_height"], H["image_width"]), interp='cubic')
             feed = {x_in: img}
             (np_pred_boxes, np_pred_confidences) = sess.run([pred_boxes, pred_confidences], feed_dict=feed)
@@ -74,7 +73,7 @@ def main():
     parser.add_argument('--iou_threshold', default=0.5, type=float)
     parser.add_argument('--tau', default=0.25, type=float)
     parser.add_argument('--min_conf', default=0.2, type=float)
-    parser.add_argument('--show_suppressed', default=True, type=bool)
+    parser.add_argument('--show_suppressed', default=False, type=bool)
     args = parser.parse_args()
     os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
     hypes_file = '%s/hypes.json' % os.path.dirname(args.weights)
@@ -83,19 +82,23 @@ def main():
     expname = args.expname + '_' if args.expname else ''
     pred_boxes = '%s.%s%s' % (args.weights, expname, os.path.basename(args.test_boxes))
     true_boxes = '%s.gt_%s%s' % (args.weights, expname, os.path.basename(args.test_boxes))
-
+    print('------------------------pred_boxes_dir:{}'.format(pred_boxes))
+    print('------------------------true_boxes_dir:{}'.format(true_boxes))
 
     pred_annolist, true_annolist = get_results(args, H)
     pred_annolist.save(pred_boxes)
     true_annolist.save(true_boxes)
 
     try:
+        print('-----succeed-----------------------------------------')
         rpc_cmd = './utils/annolist/doRPC.py --minOverlap %f %s %s' % (args.iou_threshold, true_boxes, pred_boxes)
         print('$ %s' % rpc_cmd)
         rpc_output = subprocess.check_output(rpc_cmd, shell=True)
         print(rpc_output)
         txt_file = [line for line in rpc_output.split('\n') if line.strip()][-1]
+        
         output_png = '%s/results.png' % get_image_dir(args)
+        print('---------------------------output_image_dir:{}'.format(output_png))
         plot_cmd = './utils/annolist/plotSimple.py %s --output %s' % (txt_file, output_png)
         print('$ %s' % plot_cmd)
         plot_output = subprocess.check_output(plot_cmd, shell=True)

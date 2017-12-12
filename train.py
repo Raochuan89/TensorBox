@@ -162,6 +162,8 @@ def build_forward(H, x, phase, reuse):
     with tf.variable_scope('decoder', reuse=reuse, initializer=initializer):
         scale_down = 0.01
         lstm_input = tf.reshape(cnn * scale_down, (H['batch_size'] * grid_size, H['later_feat_channels']))
+        lstm_min = tf.reduce_min(lstm_input)
+        lstm_max = tf.reduce_max(lstm_input)
         if H['use_lstm']:
             lstm_outputs = build_lstm_inner(H, lstm_input)
         else:
@@ -227,9 +229,9 @@ def build_forward(H, x, phase, reuse):
             pred_confs_deltas = tf_concat(1, pred_confs_deltas)
             if H['reregress']:
                 pred_boxes_deltas = tf_concat(1, pred_boxes_deltas)
-            return pred_boxes, pred_logits, pred_confidences, pred_confs_deltas, pred_boxes_deltas
+            return pred_boxes, pred_logits, pred_confidences, pred_confs_deltas, pred_boxes_deltas, lstm_min, lstm_max
 
-    return pred_boxes, pred_logits, pred_confidences
+    return pred_boxes, pred_logits, pred_confidences, lstm_min, lstm_max
 
 def build_forward_backward(H, x, phase, boxes, flags):
     '''
@@ -240,9 +242,9 @@ def build_forward_backward(H, x, phase, boxes, flags):
     reuse = {'train': None, 'test': True}[phase]
     if H['use_rezoom']:
         (pred_boxes, pred_logits,
-         pred_confidences, pred_confs_deltas, pred_boxes_deltas) = build_forward(H, x, phase, reuse)
+         pred_confidences, pred_confs_deltas, pred_boxes_deltas, lstm_min, lstm_max) = build_forward(H, x, phase, reuse)
     else:
-        pred_boxes, pred_logits, pred_confidences = build_forward(H, x, phase, reuse)
+        pred_boxes, pred_logits, pred_confidences, lstm_min, lstm_max = build_forward(H, x, phase, reuse)
     with tf.variable_scope('decoder', reuse={'train': None, 'test': True}[phase]):
         outer_boxes = tf.reshape(boxes, [outer_size, H['rnn_len'], 4])
         outer_flags = tf.cast(tf.reshape(flags, [outer_size, H['rnn_len']]), 'int32')
@@ -301,7 +303,7 @@ def build_forward_backward(H, x, phase, boxes, flags):
         else:
             loss = confidences_loss + boxes_loss
 
-    return pred_boxes, pred_confidences, loss, confidences_loss, boxes_loss
+    return pred_boxes, pred_confidences, loss, confidences_loss, boxes_loss, lstm_min, lstm_max
 
 def build(H, q):
     '''
@@ -340,7 +342,7 @@ def build(H, q):
 
         (pred_boxes, pred_confidences,
          loss[phase], confidences_loss[phase],
-         boxes_loss[phase]) = build_forward_backward(H, x, phase, boxes, flags)
+         boxes_loss[phase],lstm_min, lstm_max) = build_forward_backward(H, x, phase, boxes, flags)
         pred_confidences_r = tf.reshape(pred_confidences, [H['batch_size'], grid_size, H['rnn_len'], arch['num_classes']])
         pred_boxes_r = tf.reshape(pred_boxes, [H['batch_size'], grid_size, H['rnn_len'], 4])
 
@@ -389,7 +391,7 @@ def build(H, q):
 
                 merged = train_utils.add_rectangles(H, np_img, np_confidences, np_boxes,
                                                     use_stitching=True,
-                                                    rnn_len=H['rnn_len'], show_suppressed=True)[0]
+                                                    rnn_len=H['rnn_len'], show_suppressed=False)[0]
 
                 num_images = 10
                 img_path = os.path.join(H['save_dir'], '%s_%s.jpg' % ((np_global_step / H['logging']['display_iter']) % num_images, pred_or_true))
@@ -408,7 +410,7 @@ def build(H, q):
     summary_op = tf.summary.merge_all()
 
     return (config, loss, accuracy, summary_op, train_op,
-            smooth_op, global_step, learning_rate)
+            smooth_op, global_step, learning_rate, lstm_min, lstm_max)
 
 
 def train(H, test_images):
@@ -450,7 +452,7 @@ def train(H, test_images):
             sess.run(enqueue_op[phase], feed_dict=make_feed(d))
 
     (config, loss, accuracy, summary_op, train_op,
-     smooth_op, global_step, learning_rate) = build(H, q)
+     smooth_op, global_step, learning_rate, lstm_min, lstm_max) = build(H, q)
 
     saver = tf.train.Saver(max_to_keep=None)
     writer = tf.summary.FileWriter(
@@ -499,6 +501,8 @@ def train(H, test_images):
             adjusted_lr = (H['solver']['learning_rate'] *
                            0.5 ** max(0, (i / H['solver']['learning_rate_step']) - 2))
             lr_feed = {learning_rate: adjusted_lr}
+            lstm = sess.run([lstm_min, lstm_max],feed_dict = lr_feed)
+            print(lstm)
 
             if i % display_iter != 0:
                 # train network

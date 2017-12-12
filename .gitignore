@@ -9,3 +9,10 @@ graphs/*
 annos/*
 csv/*
 screens/*
+*.out
+.ipynb_checkpoints/
+*.ipynb
+*.sh
+output_new/
+*.md
+*.yml
