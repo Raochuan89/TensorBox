@@ -36,11 +36,7 @@ Also a couple of experimental and not working models has been added recently.
      # We recommend to use TENSORFLOW VERSION = 1.2 as the following steps are based on 1.2   
      $ git clone https://github.com/Raochuan89/TensorBox 
      $ cd tensorbox          
-           
-     $ # Download the cudnn and cuda version used by your tensorflow verion     
-     $ cudnn 5
-     $ cuda 8
-     $ submit GPU job to run tensorbox_batch.sh to set up neccessary configuration.
+
      
      $ python train.py --hypes hypes/lstm_rezoom.json --gpu 0 --logdir output      
      $ #see evaluation instructions below
