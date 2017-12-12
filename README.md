@@ -31,7 +31,7 @@ Also a couple of experimental and not working models has been added recently.
  ReInspect, [initially implemented](https://github.com/Russell91/ReInspect) in Caffe,      
  is a neural network extension to Overfeat-GoogLeNet in Tensorflow.        
  It is designed for high performance object detection in images with heavily overlapping instances.        
- See <a href="http://arxiv.org/abs/1506.04878" target="_blank">the paper</a> for details or the <a href="https://www.youtube.com/watch?v=QeWl0h3kQ24" target="_blank">video</a> for a demonstration.       
+ See <a href="http://arxiv.org/abs/1506.04878" target="_blank">the paper</a> for details or the <a  href="https://www.youtube.com/watch?v=QeWl0h3kQ24" target="_blank">video</a> for a demonstration.       
        
      # We recoomend to use TENSORFLOW VERSION = 1.2 as the following steps are based on 1.2   
      $ git clone https://github.com/Raochuan89/TensorBox 
