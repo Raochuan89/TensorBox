@@ -38,8 +38,8 @@ Also a couple of experimental and not working models has been added recently.
      $ cd tensorbox          
            
      $ # Download the cudnn and cuda version used by your tensorflow verion and         
-     cudnn 5
-     cuda 8
+     $cudnn 5
+     $cuda 8
      $ submit GPU job to run tensorbox_batch.sh to set up neccessary configuration.
      
      $ python train.py --hypes hypes/lstm_rezoom.json --gpu 0 --logdir output      
