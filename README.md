@@ -33,19 +33,22 @@ Also a couple of experimental and not working models has been added recently.
  It is designed for high performance object detection in images with heavily overlapping instances.        
  See <a href="http://arxiv.org/abs/1506.04878" target="_blank">the paper</a> for details or the <a href="https://www.youtube.com/watch?v=QeWl0h3kQ24" target="_blank">video</a> for a demonstration.       
        
-     # REQUIRES TENSORFLOW VERSION >= 1.2     
-     $ git clone http://github.com/russell91/tensorbox     
-     $ cd tensorbox        
-     $ ./download_data.sh      
-           
-     $ # Download the cudnn version used by your tensorflow verion and         
-     $ # put the libcudnn*.so files on your LD_LIBRARY_PATH e.g.       
-     $ cp /path/to/appropriate/cudnn/lib64/* /usr/local/cuda/lib64     
-       
-     $ cd /path/to/tensorbox/utils && make && make hungarian && cd ..      
+     # We recommend to use TENSORFLOW VERSION = 1.2 as the following steps are based on 1.2   
+     $ git clone https://github.com/Raochuan89/TensorBox 
+     $ cd tensorbox          
+
+        
+ Download the cudnn and cuda version used by your tensorflow verion, cudnn 5 and cuda 8, then submit GPU job to run tensorbox_batch.sh to set up neccessary configuration.
+     
      $ python train.py --hypes hypes/lstm_rezoom.json --gpu 0 --logdir output      
      $ #see evaluation instructions below
 
+## Prediction
+
+We provide a python scritp for loading the trained model and generate prediction bounding boxes. Make sure to generate a json file as an input. 
+```bash
+python predict.py --weights output/overfeat_rezoom_2017_01_17_15.20/save.ckpt-130000 --test_boxex data/brainwash/val_boxes.json
+```
 ## Evaluation
 
 ### Python script
