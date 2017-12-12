@@ -47,7 +47,7 @@ Also a couple of experimental and not working models has been added recently.
 
 We provide a python scritp for loading the trained model and generate prediction bounding boxes. Make sure to generate a json file as an input. 
 ```bash
-python predict.py --weights output/overfeat_rezoom_2017_01_17_15.20/save.ckpt-130000 --test_boxex data/brainwash/val_boxes.json
+python predict.py --weights output/overfeat_rezoom_2017_01_17_15.20/save.ckpt-130000 --test_boxes data/brainwash/val_boxes.json
 ```
 ## Evaluation
 
